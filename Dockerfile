@@ -5,29 +5,22 @@ FROM node:18-alpine AS base
 WORKDIR /app
 
 # Install dependencies needed for native modules
-RUN apk add --no-cache \
-    python3 \
-    make \
-    g++ \
-    && ln -sf python3 /usr/bin/python
+RUN apk add --no-cache python3 make g++
 
 # Copy package files
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Install dependencies
-RUN npm ci --only=production --ignore-scripts
-
-# Development stage
-FROM base AS development
-RUN npm ci --ignore-scripts
-COPY . .
-CMD ["npm", "run", "dev"]
-
 # Build stage
 FROM base AS build
-RUN npm ci --ignore-scripts
+
+# Install all dependencies (including dev dependencies for building)
+RUN npm ci
+
+# Copy source code
 COPY . .
+
+# Build the application
 RUN npm run build
 
 # Production stage
@@ -38,21 +31,22 @@ WORKDIR /app
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001
+    adduser -S nodeuser -u 1001
 
-# Copy package files and install only production dependencies
+# Copy package files
 COPY package*.json ./
+
+# Install only production dependencies
 RUN npm ci --only=production && npm cache clean --force
 
-# Copy built application
-COPY --from=build --chown=nextjs:nodejs /app/dist ./dist
-COPY --from=build --chown=nextjs:nodejs /app/node_modules ./node_modules
+# Copy built application from build stage
+COPY --from=build --chown=nodeuser:nodejs /app/dist ./dist
 
 # Create logs directory
-RUN mkdir -p logs && chown nextjs:nodejs logs
+RUN mkdir -p logs && chown nodeuser:nodejs logs
 
 # Switch to non-root user
-USER nextjs
+USER nodeuser
 
 # Expose port
 EXPOSE 3001
