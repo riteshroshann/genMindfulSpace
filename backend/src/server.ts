@@ -16,11 +16,17 @@ import modelsRoutes from "./routes/models"
 import journalRoutes from "./routes/journal"
 import moodRoutes from "./routes/mood"
 import authRoutes from "./routes/auth"
+import achievementsRoutes from "./routes/achievements"
+import streaksRoutes from "./routes/streaks"
+import soundscapesRoutes from "./routes/soundscapes"
 
 dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT || 3001
+
+// Trust proxy for rate limiting (required for Render deployment)
+app.set('trust proxy', 1)
 
 // Initialize Supabase client
 export const supabase = createClient(
@@ -151,6 +157,9 @@ app.use("/api/models", modelsRoutes)
 app.use("/api/journal", journalRoutes)
 app.use("/api/mood", moodRoutes)
 app.use("/api/auth", authRoutes)
+app.use("/api/achievements", achievementsRoutes)
+app.use("/api/streaks", streaksRoutes)
+app.use("/api/soundscapes", soundscapesRoutes)
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
