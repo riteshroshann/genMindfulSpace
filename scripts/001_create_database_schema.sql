@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS public.friend_connections (
 );
 
 -- Create AI chat sessions table
-CREATE TABLE IF NOT EXISTS public.ai_chat_sessions (
+CREATE TABLE IF NOT EXISTS public.chat_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   title TEXT,
@@ -84,6 +84,49 @@ CREATE TABLE IF NOT EXISTS public.ai_chat_sessions (
 );
 
 -- Create AI chat messages table
+CREATE TABLE IF NOT EXISTS public.chat_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id TEXT NOT NULL,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+  content TEXT NOT NULL,
+  metadata JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create user achievements table
+CREATE TABLE IF NOT EXISTS public.user_achievements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  achievement_id TEXT NOT NULL,
+  progress INTEGER DEFAULT 0,
+  unlocked BOOLEAN DEFAULT FALSE,
+  unlocked_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, achievement_id)
+);
+
+-- Create crisis events table for safety tracking
+CREATE TABLE IF NOT EXISTS public.crisis_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  session_id TEXT NOT NULL,
+  message_content TEXT NOT NULL,
+  keywords_detected TEXT[],
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Legacy tables for compatibility (keep old names as aliases/views)
+CREATE TABLE IF NOT EXISTS public.ai_chat_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create AI chat messages table (legacy)
 CREATE TABLE IF NOT EXISTS public.ai_chat_messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id UUID NOT NULL REFERENCES public.ai_chat_sessions(id) ON DELETE CASCADE,
@@ -100,6 +143,10 @@ ALTER TABLE public.game_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.community_posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.community_likes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.friend_connections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.chat_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_achievements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crisis_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_chat_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_chat_messages ENABLE ROW LEVEL SECURITY;
 
@@ -190,3 +237,33 @@ CREATE POLICY "Users can insert messages to their own sessions" ON public.ai_cha
       WHERE id = session_id AND user_id = auth.uid()
     )
   );
+
+-- Create RLS policies for chat sessions (new table)
+CREATE POLICY "Users can view their own chat sessions" ON public.chat_sessions
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own chat sessions" ON public.chat_sessions
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own chat sessions" ON public.chat_sessions
+  FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own chat sessions" ON public.chat_sessions
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Create RLS policies for chat messages (new table)
+CREATE POLICY "Users can view their own chat messages" ON public.chat_messages
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own chat messages" ON public.chat_messages
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Create RLS policies for user achievements
+CREATE POLICY "Users can view their own achievements" ON public.user_achievements
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own achievements" ON public.user_achievements
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own achievements" ON public.user_achievements
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- Create RLS policies for crisis events (admin access mainly)
+CREATE POLICY "Users can view their own crisis events" ON public.crisis_events
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "System can insert crisis events" ON public.crisis_events
+  FOR INSERT WITH CHECK (true); -- Allow system to log crisis events

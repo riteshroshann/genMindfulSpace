@@ -192,7 +192,7 @@ export default function AIChatPage() {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content:
-          "I'm sorry, I'm having trouble connecting right now. Please check that your OpenRouter API key is configured correctly, or try again in a moment.",
+          "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
         created_at: new Date().toISOString(),
       }
       setMessages((prev) => [...prev, errorMsg])
