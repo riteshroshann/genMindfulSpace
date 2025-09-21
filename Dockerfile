@@ -11,15 +11,18 @@ RUN apk add --no-cache python3 make g++
 COPY backend/package*.json ./backend/
 COPY backend/tsconfig.json ./backend/
 
-# Install backend dependencies
+# Install backend dependencies (including dev dependencies for build)
 WORKDIR /app/backend
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy backend source code
 COPY backend/src ./src
 
 # Build the TypeScript application
 RUN npm run build
+
+# Remove dev dependencies to reduce image size
+RUN npm prune --production
 
 # Expose the port that the app runs on
 EXPOSE 3001
