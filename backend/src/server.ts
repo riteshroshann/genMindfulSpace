@@ -7,7 +7,6 @@ import morgan from "morgan"
 import dotenv from "dotenv"
 import { createClient } from "@supabase/supabase-js"
 import { VertexAI } from "@google-cloud/vertexai"
-import { LanguageServiceClient } from "@google-cloud/language"
 import { GoogleAuth } from "google-auth-library"
 
 // Import routes
@@ -42,7 +41,6 @@ export const supabase = createClient(
 
 // Initialize Google Cloud services
 export let vertexAI: VertexAI
-export let languageClient: LanguageServiceClient
 
 const initializeGoogleCloud = async () => {
   try {
@@ -57,12 +55,9 @@ const initializeGoogleCloud = async () => {
       location: process.env.GOOGLE_CLOUD_LOCATION || 'us-central1',
     })
 
-    // Initialize Language Service Client for sentiment analysis
-    languageClient = new LanguageServiceClient()
-
-    console.log('✅ Google Cloud services initialized successfully')
+    console.log('✅ Google Cloud Vertex AI initialized successfully')
   } catch (error) {
-    console.error('❌ Failed to initialize Google Cloud services:', error)
+    console.error('❌ Failed to initialize Google Cloud Vertex AI:', error)
     throw error
   }
 }
